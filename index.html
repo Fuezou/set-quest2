@@ -1,1 +1,1311 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>集合クエスト II ～補集合・ドモルガンの章～</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body {
+    height: 100%;
+    background: #000;
+    font-family: 'Courier New', 'ＭＳ ゴシック', monospace;
+    color: #fff;
+    overflow: hidden;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-feature-settings: "palt";
+  }
+  #game {
+    width: 100%;
+    max-width: 480px;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 900px;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    border: 2px solid #333;
+    overflow: hidden;
+  }
 
+  .dq-window {
+    background: #000;
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 3px #000, 0 0 0 5px #fff;
+    padding: 8px;
+    margin: 4px 6px;
+    position: relative;
+  }
+
+  #status {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    line-height: 1.7;
+    flex-shrink: 0;
+  }
+  #status .row { display: flex; justify-content: space-between; }
+  #status .label { color: #ffff00; letter-spacing: 1px; }
+  #status .value { color: #fff; letter-spacing: 1px; }
+  .hearts { letter-spacing: 2px; color: #ff4444; }
+  .hearts .empty { color: #444; }
+
+  #field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 110px;
+    overflow: hidden;
+    background: linear-gradient(180deg, #0a0520 0%, #1a0a38 60%, #000 100%);
+  }
+  #field::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, #fff 1px, transparent 0),
+      radial-gradient(1px 1px at 70% 20%, #fff 1px, transparent 0),
+      radial-gradient(1px 1px at 40% 70%, #fff 1px, transparent 0),
+      radial-gradient(1px 1px at 85% 55%, #aaa 1px, transparent 0),
+      radial-gradient(1px 1px at 15% 85%, #aaa 1px, transparent 0);
+    pointer-events: none;
+  }
+  #monster {
+    font-size: 80px;
+    line-height: 1;
+    filter: contrast(1.1) saturate(1.2);
+    transition: transform 0.15s, opacity 0.3s;
+    position: relative;
+    z-index: 2;
+    text-shadow: 0 0 8px rgba(255,255,255,0.3);
+  }
+  #monster.boss { font-size: 100px; animation: bossFloat 2s ease-in-out infinite; text-shadow: 0 0 16px rgba(255,0,0,0.6); }
+  @keyframes bossFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  #monster.hit { animation: hit 0.3s; }
+  @keyframes hit {
+    0%, 100% { transform: translateX(0); filter: brightness(1); }
+    20% { transform: translateX(-10px); filter: brightness(3) hue-rotate(180deg); }
+    40% { transform: translateX(10px); filter: brightness(3) hue-rotate(180deg); }
+    60% { transform: translateX(-6px); filter: brightness(3); }
+    80% { transform: translateX(6px); }
+  }
+  /* 撃破アニメ強化版：フラッシュ→粒子飛散→消える */
+  #monster.dying {
+    animation: die 1.2s forwards;
+  }
+  @keyframes die {
+    0% { opacity: 1; transform: scale(1) rotate(0deg); filter: brightness(1); }
+    15% { opacity: 1; transform: scale(1.3) rotate(-10deg); filter: brightness(5) saturate(0); }
+    30% { opacity: 1; transform: scale(1.1) rotate(10deg); filter: brightness(10) saturate(0) blur(1px); }
+    50% { opacity: 0.8; transform: scale(1.4) rotate(-20deg); filter: brightness(3) blur(2px); }
+    80% { opacity: 0.3; transform: scale(0.5) rotate(90deg); filter: blur(3px); }
+    100% { opacity: 0; transform: scale(0.1) rotate(180deg); filter: blur(4px); }
+  }
+  #monster.miss-dmg { animation: miss 0.4s; }
+  @keyframes miss {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(0) scale(1.08); filter: brightness(1.3) sepia(0.3); }
+  }
+  #monsterName {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    color: #ffff00;
+    letter-spacing: 2px;
+    z-index: 3;
+    text-shadow: 2px 2px 0 #000;
+  }
+
+  #problemBox {
+    padding: 0;
+    font-size: 14px;
+    text-align: center;
+    line-height: 1.6;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 1;
+    flex-grow: 0;
+    max-height: 34vh;
+    overflow: hidden;
+  }
+  #problemBox .label {
+    color: #ffff00;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 6px 8px 4px;
+    flex-shrink: 0;
+  }
+  #problemBox .expr {
+    color: #fff;
+    font-size: 15px;
+    letter-spacing: 1px;
+    line-height: 1.7;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 10px 8px;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+    min-height: 0;
+  }
+  #problemBox .expr::-webkit-scrollbar { width: 4px; }
+  #problemBox .expr::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+  #problemBox .expr .set-def {
+    color: #8fd4ff;
+    display: block;
+    margin: 2px 0;
+  }
+  #problemBox .expr .question {
+    color: #fff;
+    font-size: 16px;
+    margin-top: 6px;
+    display: block;
+  }
+  #problemBox .expr .symbol {
+    color: #ffff00;
+    font-weight: bold;
+    font-size: 19px;
+  }
+  /* 上付き記号（補集合バー） */
+  .cmpl {
+    border-top: 2px solid currentColor;
+    padding: 2px 1px 0;
+    margin-top: 2px;
+    display: inline-block;
+    line-height: 1;
+    vertical-align: top;
+  }
+  /* 二重補集合のための外側バー余白 */
+  .cmpl .cmpl {
+    margin-top: 1px;
+    padding-top: 1px;
+  }
+
+  #answerArea {
+    padding: 6px;
+    flex-shrink: 0;
+    min-height: 120px;
+  }
+
+  /* 2択 (○×) */
+  .tf-pad {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 8px;
+  }
+  .tf-btn {
+    background: #000;
+    border: 3px solid #fff;
+    color: #fff;
+    font-family: inherit;
+    font-size: 32px;
+    font-weight: bold;
+    padding: 18px 0;
+    cursor: pointer;
+    transition: all 0.05s;
+    min-height: 64px;
+    touch-action: manipulation;
+  }
+  .tf-btn.o-btn { color: #ff6666; }
+  .tf-btn.x-btn { color: #6688ff; }
+  .tf-btn:active {
+    background: #fff;
+    color: #000 !important;
+    transform: translateY(1px);
+  }
+
+  /* 4択 */
+  .choice-pad {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 6px;
+  }
+  .choice-btn {
+    background: #000;
+    border: 2px solid #fff;
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 10px 6px;
+    cursor: pointer;
+    transition: all 0.05s;
+    min-height: 48px;
+    touch-action: manipulation;
+    letter-spacing: 1px;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .choice-btn:active {
+    background: #fff;
+    color: #000;
+    transform: translateY(1px);
+  }
+
+  .tf-btn.correct, .choice-btn.correct {
+    background: #005500;
+    color: #00ff00 !important;
+    border-color: #00ff00;
+    animation: correctFlash 0.4s;
+  }
+  .tf-btn.wrong, .choice-btn.wrong {
+    background: #550000;
+    color: #ff4444 !important;
+    border-color: #ff4444;
+    animation: wrongShake 0.4s;
+  }
+  @keyframes correctFlash {
+    0%, 100% { box-shadow: 0 0 0 0 #00ff00; }
+    50% { box-shadow: 0 0 12px 2px #00ff00; }
+  }
+  @keyframes wrongShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  #message {
+    min-height: 50px;
+    font-size: 13px;
+    line-height: 1.6;
+    letter-spacing: 1px;
+    white-space: pre-wrap;
+    flex-shrink: 0;
+  }
+  #message .arrow {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    color: #fff;
+    animation: blink 0.8s steps(2) infinite;
+    font-size: 14px;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 100;
+    text-align: center;
+  }
+  .overlay.hidden { display: none; }
+  .overlay h1 {
+    font-size: 24px;
+    color: #ffff00;
+    letter-spacing: 3px;
+    margin-bottom: 20px;
+    text-shadow: 3px 3px 0 #884400;
+    line-height: 1.4;
+  }
+  .overlay p {
+    font-size: 14px;
+    color: #fff;
+    line-height: 2;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+  .overlay .sub { color: #aaa; font-size: 12px; }
+  .overlay .start-btn {
+    background: #000;
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 3px #000, 0 0 0 5px #fff;
+    color: #ffff00;
+    padding: 14px 28px;
+    font-size: 16px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    margin-top: 20px;
+    font-family: inherit;
+  }
+  .overlay .start-btn:active { background: #fff; color: #000; }
+  .overlay .hero { font-size: 56px; margin-bottom: 12px; }
+
+  /* ダメージ浮遊 */
+  .dmg-float {
+    position: absolute;
+    font-size: 26px;
+    font-weight: bold;
+    color: #ff4444;
+    text-shadow: 2px 2px 0 #000, 0 0 8px #ff0000;
+    pointer-events: none;
+    animation: dmgFloat 1s forwards;
+    z-index: 10;
+  }
+  @keyframes dmgFloat {
+    0% { opacity: 1; transform: translateY(0) scale(0.6); }
+    30% { transform: translateY(-20px) scale(1.2); }
+    100% { opacity: 0; transform: translateY(-60px) scale(1); }
+  }
+
+  #flash {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 50;
+  }
+  #flash.on { animation: flash 0.2s; }
+  @keyframes flash {
+    0% { opacity: 0; }
+    50% { opacity: 0.8; }
+    100% { opacity: 0; }
+  }
+
+  /* 撃破時の強力フラッシュ */
+  #flash.defeat { animation: defeatFlash 0.6s; }
+  @keyframes defeatFlash {
+    0% { opacity: 0; background: #fff; }
+    20% { opacity: 1; background: #ffff00; }
+    50% { opacity: 0.8; background: #fff; }
+    100% { opacity: 0; background: #fff; }
+  }
+
+  /* 粒子（撃破エフェクト） */
+  .particle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 15;
+  }
+  .particle.star {
+    background: transparent;
+    font-size: 16px;
+    width: auto;
+    height: auto;
+    line-height: 1;
+  }
+
+  /* クリティカル文字 */
+  .critical-text {
+    position: absolute;
+    font-size: 32px;
+    font-weight: bold;
+    color: #ffff00;
+    text-shadow: 3px 3px 0 #000, 0 0 16px #ffff00, 0 0 32px #ff8800;
+    pointer-events: none;
+    z-index: 20;
+    letter-spacing: 3px;
+    animation: critText 1.2s forwards;
+    white-space: nowrap;
+    transform-origin: center;
+  }
+  @keyframes critText {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-20deg); }
+    15% { opacity: 1; transform: translate(-50%, -50%) scale(1.5) rotate(5deg); }
+    25% { transform: translate(-50%, -50%) scale(1.0) rotate(-3deg); }
+    70% { opacity: 1; transform: translate(-50%, -50%) scale(1.0) rotate(0deg); }
+    100% { opacity: 0; transform: translate(-50%, -80%) scale(0.9); }
+  }
+
+  /* 撃破時の爆風輪 */
+  .shockwave {
+    position: absolute;
+    border: 4px solid #ffff00;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 12;
+    animation: shockwave 0.8s forwards;
+    box-shadow: 0 0 20px #ffff00, inset 0 0 20px #ffaa00;
+  }
+  @keyframes shockwave {
+    0% {
+      width: 20px; height: 20px;
+      opacity: 1;
+      border-width: 6px;
+    }
+    100% {
+      width: 300px; height: 300px;
+      opacity: 0;
+      border-width: 1px;
+    }
+  }
+
+  /* レベルアップ風のゴールドフラッシュ */
+  .gold-flash {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(255,220,0,0.8) 0%, rgba(255,150,0,0.4) 40%, transparent 70%);
+    pointer-events: none;
+    z-index: 11;
+    animation: goldFlash 0.7s forwards;
+  }
+  @keyframes goldFlash {
+    0% { opacity: 0; }
+    30% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  .level-up {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 28px;
+    color: #ffff00;
+    text-shadow: 3px 3px 0 #884400, 0 0 16px #ffff00;
+    letter-spacing: 3px;
+    z-index: 20;
+    animation: lvUp 1.8s forwards;
+    pointer-events: none;
+    text-align: center;
+  }
+  .level-up .floor-name {
+    display: block;
+    font-size: 18px;
+    margin-top: 6px;
+    color: #fff;
+  }
+  @keyframes lvUp {
+    0% { opacity: 0; transform: translate(-50%, -30%) scale(0.5); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+  }
+</style>
+</head>
+<body>
+<div id="game">
+
+  <div class="overlay" id="titleScreen">
+    <div class="hero">📜</div>
+    <h1>集合クエスト II<br><span style="font-size:13px;color:#fff;">～補集合・ドモルガンの章～</span></h1>
+    <p>補集合の力を使いこなし<br>ま王を　たおせ！</p>
+    <button class="start-btn" id="startBtn">▶ ぼうけんのはじまり</button>
+    <p class="sub" style="margin-top:20px;font-size:10px;line-height:1.8;">
+      1F 演算のどうくつ<br>
+      2F 補集合の性質<br>
+      3F ドモルガンのとう<br>
+      最深部 ま王のやかた
+    </p>
+  </div>
+
+  <div class="overlay hidden" id="endingScreen">
+    <div class="hero">👑</div>
+    <h1>GAME CLEAR!</h1>
+    <p>ま王は　たおされた！</p>
+    <p>集合の　あやつりし　勇者よ<br>その知恵に　栄光あれ。</p>
+    <p class="sub">～ FIN ～</p>
+    <button class="start-btn" id="restartBtn">▶ もう一度</button>
+  </div>
+
+  <div class="overlay hidden" id="gameOverScreen">
+    <div class="hero">💀</div>
+    <h1 style="color:#ff4444;text-shadow:3px 3px 0 #440000;">ぜんめつ…</h1>
+    <p>勇者は倒れてしまった…</p>
+    <p class="sub">また挑戦しよう</p>
+    <button class="start-btn" id="retryBtn">▶ やりなおす</button>
+  </div>
+
+  <div class="dq-window" id="status">
+    <div class="row"><span class="label">ゆうしゃ</span><span class="value" id="levelDisplay">1F</span></div>
+    <div class="row"><span class="label">ライフ</span><span class="value hearts" id="livesDisplay">♥♥</span></div>
+    <div class="row"><span class="label">げきは</span><span class="value" id="progressDisplay">0/3</span></div>
+    <div class="row"><span class="label">てき</span><span class="value" id="enemyHpDisplay">HP 1</span></div>
+  </div>
+
+  <div id="field">
+    <div id="monsterName">スライム</div>
+    <div id="monster">🟢</div>
+    <div id="flash"></div>
+  </div>
+
+  <div class="dq-window" id="problemBox">
+    <div class="label">▼ もんだい</div>
+    <div class="expr" id="problemExpr"></div>
+  </div>
+
+  <div class="dq-window" id="answerArea"></div>
+
+  <div class="dq-window" id="message" style="position:relative;">
+    モンスターが　あらわれた！
+    <span class="arrow" id="msgArrow" style="display:none;">▼</span>
+  </div>
+</div>
+
+<script>
+// ========== 集合ユーティリティ ==========
+function fmtSet(arr) {
+  if (arr.length === 0) return '∅';
+  return '{' + [...arr].sort((a,b)=>a-b).join(', ') + '}';
+}
+function setEq(a, b) {
+  if (a.length !== b.length) return false;
+  const sa = [...a].sort((x,y)=>x-y);
+  const sb = [...b].sort((x,y)=>x-y);
+  return sa.every((v,i) => v === sb[i]);
+}
+function isSubset(a, b) { return a.every(x => b.includes(x)); }
+function union(a, b) { return [...new Set([...a, ...b])]; }
+function intersect(a, b) { return a.filter(x => b.includes(x)); }
+function complement(u, a) { return u.filter(x => !a.includes(x)); }
+function rand(n) { return Math.floor(Math.random() * n); }
+function pick(arr) { return arr[rand(arr.length)]; }
+function pickN(arr, n) {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, n);
+}
+// 補集合バー付き表示
+function cmpl(inner) { return `<span class="cmpl">${inner}</span>`; }
+
+// ========== 問題生成 ==========
+
+// ----- LV1: 共通部分・和集合・補集合 (4択) -----
+function genLv1() {
+  const op = pick(['cap', 'cup', 'comp']);
+  const U = [1,2,3,4,5,6,7,8];
+
+  if (op === 'cap' || op === 'cup') {
+    // A ∩ B または A ∪ B
+    const A = pickN(U, 3 + rand(2));
+    const B = pickN(U, 3 + rand(2));
+    // 共通部分を必ず1つ以上持たせる
+    if (intersect(A, B).length === 0) B[0] = A[0];
+    const correct = op === 'cap' ? intersect(A, B) : union(A, B);
+    const symbol = op === 'cap' ? '∩' : '∪';
+
+    const wrongs = [];
+    wrongs.push(op === 'cap' ? union(A, B) : intersect(A, B));
+    wrongs.push([...A]);
+    wrongs.push([...B]);
+    const uniqueWrongs = dedupSetArr(wrongs, correct);
+    while (uniqueWrongs.length < 3) {
+      const modified = modifySet(correct, U);
+      if (!setEq(modified, correct) && !uniqueWrongs.some(uw => setEq(uw, modified))) {
+        uniqueWrongs.push(modified);
+      } else break;
+    }
+    const choices = [correct, ...uniqueWrongs.slice(0, 3)].sort(() => Math.random() - 0.5);
+    const correctIdx = choices.findIndex(c => setEq(c, correct));
+    return {
+      prompt: 'もんだい',
+      expr: `<span class="set-def">U = ${fmtSet(U)}</span>
+             <span class="set-def">A = ${fmtSet(A)}</span>
+             <span class="set-def">B = ${fmtSet(B)}</span>
+             <span class="question">A <span class="symbol">${symbol}</span> B を　もとめよ</span>`,
+      type: 'choice',
+      choices: choices.map(c => fmtSet(c)),
+      correctIdx,
+      key: `lv1-${op}-${A.join(',')}-${B.join(',')}`
+    };
+  } else {
+    // 補集合 Ā
+    const A = pickN(U, 3 + rand(2));
+    const correct = complement(U, A);
+    const wrongs = [];
+    wrongs.push([...A]);
+    wrongs.push(complement(U, [A[0]]));
+    wrongs.push([...U]);
+    const uniqueWrongs = dedupSetArr(wrongs, correct);
+    while (uniqueWrongs.length < 3) {
+      const modified = modifySet(correct, U);
+      if (!setEq(modified, correct) && !uniqueWrongs.some(uw => setEq(uw, modified))) {
+        uniqueWrongs.push(modified);
+      } else break;
+    }
+    const choices = [correct, ...uniqueWrongs.slice(0, 3)].sort(() => Math.random() - 0.5);
+    const correctIdx = choices.findIndex(c => setEq(c, correct));
+    return {
+      prompt: 'もんだい',
+      expr: `<span class="set-def">U = ${fmtSet(U)}</span>
+             <span class="set-def">A = ${fmtSet(A)}</span>
+             <span class="question">${cmpl('A')} （A の補集合）を　もとめよ</span>`,
+      type: 'choice',
+      choices: choices.map(c => fmtSet(c)),
+      correctIdx,
+      key: `lv1-comp-${A.join(',')}`
+    };
+  }
+}
+
+function dedupSetArr(wrongs, correct) {
+  const unique = [];
+  for (const w of wrongs) {
+    if (!setEq(w, correct) && !unique.some(uw => setEq(uw, w))) unique.push(w);
+  }
+  return unique;
+}
+function modifySet(base, U) {
+  const m = [...base];
+  if (m.length > 0 && Math.random() < 0.5) {
+    m.splice(rand(m.length), 1);
+  } else {
+    const notIn = U.filter(v => !m.includes(v));
+    if (notIn.length) m.push(pick(notIn));
+  }
+  return m;
+}
+
+// ----- LV2: 補集合の性質 -----
+// (a) A ∪ Ā = U
+// (b) A ∩ Ā = ∅
+// (c) = A の二重否定
+// (d) Ū = ∅, ∅̄ = U
+function genLv2() {
+  const type = pick(['union_comp', 'inter_comp', 'double_comp', 'u_comp', 'empty_comp']);
+  const U = [1,2,3,4,5,6,7,8];
+
+  if (type === 'union_comp') {
+    // A ∪ Ā を求める（答えは必ず U）
+    const A = pickN(U, 3 + rand(2));
+    const correct = [...U];
+    const wrongs = [
+      [...A],
+      complement(U, A),
+      []
+    ];
+    const uniqueWrongs = dedupSetArr(wrongs, correct);
+    while (uniqueWrongs.length < 3) {
+      const m = modifySet(correct, U);
+      if (!setEq(m, correct) && !uniqueWrongs.some(uw => setEq(uw, m))) uniqueWrongs.push(m);
+      else break;
+    }
+    const choices = [correct, ...uniqueWrongs.slice(0, 3)].sort(() => Math.random() - 0.5);
+    const correctIdx = choices.findIndex(c => setEq(c, correct));
+    return {
+      prompt: 'もんだい',
+      expr: `<span class="set-def">U = ${fmtSet(U)}</span>
+             <span class="set-def">A = ${fmtSet(A)}</span>
+             <span class="question">A <span class="symbol">∪</span> ${cmpl('A')} を　もとめよ</span>`,
+      type: 'choice',
+      choices: choices.map(c => fmtSet(c)),
+      correctIdx,
+      key: `lv2-uc-${A.join(',')}`
+    };
+  } else if (type === 'inter_comp') {
+    // A ∩ Ā を求める（答えは必ず ∅）
+    const A = pickN(U, 3 + rand(2));
+    const correct = [];
+    const wrongs = [
+      [...A],
+      complement(U, A),
+      [...U]
+    ];
+    const uniqueWrongs = dedupSetArr(wrongs, correct);
+    while (uniqueWrongs.length < 3) {
+      const m = pickN(U, 1 + rand(2));
+      if (!setEq(m, correct) && !uniqueWrongs.some(uw => setEq(uw, m))) uniqueWrongs.push(m);
+      else break;
+    }
+    const choices = [correct, ...uniqueWrongs.slice(0, 3)].sort(() => Math.random() - 0.5);
+    const correctIdx = choices.findIndex(c => setEq(c, correct));
+    return {
+      prompt: 'もんだい',
+      expr: `<span class="set-def">U = ${fmtSet(U)}</span>
+             <span class="set-def">A = ${fmtSet(A)}</span>
+             <span class="question">A <span class="symbol">∩</span> ${cmpl('A')} を　もとめよ</span>`,
+      type: 'choice',
+      choices: choices.map(c => fmtSet(c)),
+      correctIdx,
+      key: `lv2-ic-${A.join(',')}`
+    };
+  } else if (type === 'double_comp') {
+    // Ā̄ = A の確認、または補集合の計算を通して
+    const A = pickN(U, 3 + rand(2));
+    const Abar = complement(U, A);
+    const correct = [...A]; // 二重補集合 = A
+    const wrongs = [
+      [...Abar],
+      [...U],
+      []
+    ];
+    const uniqueWrongs = dedupSetArr(wrongs, correct);
+    while (uniqueWrongs.length < 3) {
+      const m = modifySet(correct, U);
+      if (!setEq(m, correct) && !uniqueWrongs.some(uw => setEq(uw, m))) uniqueWrongs.push(m);
+      else break;
+    }
+    const choices = [correct, ...uniqueWrongs.slice(0, 3)].sort(() => Math.random() - 0.5);
+    const correctIdx = choices.findIndex(c => setEq(c, correct));
+    return {
+      prompt: 'もんだい',
+      expr: `<span class="set-def">U = ${fmtSet(U)}</span>
+             <span class="set-def">A = ${fmtSet(A)}</span>
+             <span class="question">${cmpl(cmpl('A'))} を　もとめよ</span>`,
+      type: 'choice',
+      choices: choices.map(c => fmtSet(c)),
+      correctIdx,
+      key: `lv2-dc-${A.join(',')}`
+    };
+  } else if (type === 'u_comp') {
+    // Ū = ∅
+    const correct = [];
+    const wrongs = [[...U], pickN(U, 3), [U[0]]];
+    const uniqueWrongs = dedupSetArr(wrongs, correct);
+    while (uniqueWrongs.length < 3) {
+      const m = pickN(U, 1 + rand(3));
+      if (!setEq(m, correct) && !uniqueWrongs.some(uw => setEq(uw, m))) uniqueWrongs.push(m);
+      else break;
+    }
+    const choices = [correct, ...uniqueWrongs.slice(0, 3)].sort(() => Math.random() - 0.5);
+    const correctIdx = choices.findIndex(c => setEq(c, correct));
+    return {
+      prompt: 'もんだい',
+      expr: `<span class="set-def">U = ${fmtSet(U)}</span>
+             <span class="question">${cmpl('U')} （全体集合の補集合）を　もとめよ</span>`,
+      type: 'choice',
+      choices: choices.map(c => fmtSet(c)),
+      correctIdx,
+      key: `lv2-uc-empty`
+    };
+  } else {
+    // ∅̄ = U
+    const correct = [...U];
+    const wrongs = [[], pickN(U, 3), [U[0]]];
+    const uniqueWrongs = dedupSetArr(wrongs, correct);
+    while (uniqueWrongs.length < 3) {
+      const m = pickN(U, 1 + rand(3));
+      if (!setEq(m, correct) && !uniqueWrongs.some(uw => setEq(uw, m))) uniqueWrongs.push(m);
+      else break;
+    }
+    const choices = [correct, ...uniqueWrongs.slice(0, 3)].sort(() => Math.random() - 0.5);
+    const correctIdx = choices.findIndex(c => setEq(c, correct));
+    return {
+      prompt: 'もんだい',
+      expr: `<span class="set-def">U = ${fmtSet(U)}</span>
+             <span class="question">${cmpl('∅')} （空集合の補集合）を　もとめよ</span>`,
+      type: 'choice',
+      choices: choices.map(c => fmtSet(c)),
+      correctIdx,
+      key: `lv2-ec-U`
+    };
+  }
+}
+
+// ----- LV3: ド・モルガンの法則 -----
+// 3タイプ:
+// (a) A∪B の補を計算
+// (b) A∩B の補を計算
+// (c) 公式の識別: A∪B の補と等しいのはどれ？ (4択: Ā∩B̄, Ā∪B̄, A∩B, A∪B)
+function genLv3() {
+  const type = pick(['dm_union', 'dm_inter', 'formula']);
+  const U = [1,2,3,4,5,6,7,8];
+  const A = pickN(U, 3 + rand(2));
+  const B = pickN(U, 3 + rand(2));
+  // 共通部分を確保
+  if (intersect(A, B).length === 0) B[0] = A[0];
+
+  if (type === 'dm_union') {
+    // A∪B の補 = Ā ∩ B̄
+    const un = union(A, B);
+    const correct = complement(U, un);
+    const wrongs = [
+      complement(U, intersect(A, B)),  // A∩B の補 = Ā∪B̄
+      complement(U, A),                 // Ā
+      complement(U, B)                  // B̄
+    ];
+    const uniqueWrongs = dedupSetArr(wrongs, correct);
+    while (uniqueWrongs.length < 3) {
+      const m = modifySet(correct, U);
+      if (!setEq(m, correct) && !uniqueWrongs.some(uw => setEq(uw, m))) uniqueWrongs.push(m);
+      else break;
+    }
+    const choices = [correct, ...uniqueWrongs.slice(0, 3)].sort(() => Math.random() - 0.5);
+    const correctIdx = choices.findIndex(c => setEq(c, correct));
+    return {
+      prompt: 'もんだい',
+      expr: `<span class="set-def">U = ${fmtSet(U)}</span>
+             <span class="set-def">A = ${fmtSet(A)}</span>
+             <span class="set-def">B = ${fmtSet(B)}</span>
+             <span class="question">${cmpl('A∪B')} を　もとめよ</span>`,
+      type: 'choice',
+      choices: choices.map(c => fmtSet(c)),
+      correctIdx,
+      key: `lv3-dmu-${A.join(',')}-${B.join(',')}`
+    };
+  } else if (type === 'dm_inter') {
+    // A∩B の補 = Ā ∪ B̄
+    const it = intersect(A, B);
+    const correct = complement(U, it);
+    const wrongs = [
+      complement(U, union(A, B)),
+      complement(U, A),
+      complement(U, B)
+    ];
+    const uniqueWrongs = dedupSetArr(wrongs, correct);
+    while (uniqueWrongs.length < 3) {
+      const m = modifySet(correct, U);
+      if (!setEq(m, correct) && !uniqueWrongs.some(uw => setEq(uw, m))) uniqueWrongs.push(m);
+      else break;
+    }
+    const choices = [correct, ...uniqueWrongs.slice(0, 3)].sort(() => Math.random() - 0.5);
+    const correctIdx = choices.findIndex(c => setEq(c, correct));
+    return {
+      prompt: 'もんだい',
+      expr: `<span class="set-def">U = ${fmtSet(U)}</span>
+             <span class="set-def">A = ${fmtSet(A)}</span>
+             <span class="set-def">B = ${fmtSet(B)}</span>
+             <span class="question">${cmpl('A∩B')} を　もとめよ</span>`,
+      type: 'choice',
+      choices: choices.map(c => fmtSet(c)),
+      correctIdx,
+      key: `lv3-dmi-${A.join(',')}-${B.join(',')}`
+    };
+  } else {
+    // 公式の識別: A∪B の補と等しいのはどれ？
+    // または A∩B の補と等しいのはどれ？
+    const which = Math.random() < 0.5 ? 'union' : 'inter';
+    if (which === 'union') {
+      // A∪B の補 = Ā ∩ B̄
+      const choices = [
+        `${cmpl('A')} ∩ ${cmpl('B')}`,  // 正解
+        `${cmpl('A')} ∪ ${cmpl('B')}`,
+        `A ∩ B`,
+        `A ∪ B`
+      ];
+      const correctIdx = 0;
+      const shuffled = choices.map((c, i) => ({c, orig: i})).sort(() => Math.random() - 0.5);
+      const newCorrectIdx = shuffled.findIndex(o => o.orig === correctIdx);
+      return {
+        prompt: 'ドモルガンの法則',
+        expr: `<span class="question">${cmpl('A∪B')} と　等しいのは？</span>`,
+        type: 'choice',
+        choices: shuffled.map(o => o.c),
+        correctIdx: newCorrectIdx,
+        key: `lv3-formula-union`
+      };
+    } else {
+      // A∩B の補 = Ā ∪ B̄
+      const choices = [
+        `${cmpl('A')} ∪ ${cmpl('B')}`,  // 正解
+        `${cmpl('A')} ∩ ${cmpl('B')}`,
+        `A ∪ B`,
+        `A ∩ B`
+      ];
+      const correctIdx = 0;
+      const shuffled = choices.map((c, i) => ({c, orig: i})).sort(() => Math.random() - 0.5);
+      const newCorrectIdx = shuffled.findIndex(o => o.orig === correctIdx);
+      return {
+        prompt: 'ドモルガンの法則',
+        expr: `<span class="question">${cmpl('A∩B')} と　等しいのは？</span>`,
+        type: 'choice',
+        choices: shuffled.map(o => o.c),
+        correctIdx: newCorrectIdx,
+        key: `lv3-formula-inter`
+      };
+    }
+  }
+}
+
+// ----- BOSS: 混成 -----
+function genBoss() {
+  const gens = [genLv1, genLv2, genLv3];
+  return pick(gens)();
+}
+
+let lastKey = null;
+function generateProblem(lvlIdx) {
+  const gens = [genLv1, genLv2, genLv3, genBoss];
+  const gen = gens[lvlIdx];
+  let p, attempts = 0;
+  do {
+    p = gen();
+    attempts++;
+    if (attempts > 20) break;
+  } while (p.key === lastKey);
+  lastKey = p.key;
+  return p;
+}
+
+// ========== ゲームロジック ==========
+const LEVELS = [
+  { lv: '1F', name: '演算のどうくつ', required: 3, enemies: [
+    { name: 'スライム',    sprite: '🟢', hp: 1 },
+    { name: 'ドラキー',    sprite: '🦇', hp: 1 },
+    { name: 'おばけキノコ', sprite: '🍄', hp: 1 }
+  ]},
+  { lv: '2F', name: '補集合のせいしつ', required: 3, enemies: [
+    { name: 'おおさそり',   sprite: '🦂', hp: 1 },
+    { name: 'リカント',     sprite: '🐺', hp: 1 },
+    { name: 'キメラ',       sprite: '🦅', hp: 1 }
+  ]},
+  { lv: '3F', name: 'ドモルガンのとう', required: 4, enemies: [
+    { name: 'ベビーサタン', sprite: '👹', hp: 1 },
+    { name: 'ゴーレム',     sprite: '🗿', hp: 1 },
+    { name: 'ミミック',     sprite: '📦', hp: 1 },
+    { name: 'ダースドラゴン', sprite: '🐉', hp: 1 }
+  ]},
+  { lv: 'BOSS', name: 'ま王のやかた', required: 1, enemies: [
+    { name: '魔王ドラゴン', sprite: '🐲', hp: 2, isBoss: true }
+  ]}
+];
+
+const state = {
+  levelIdx: 0,
+  defeatedInLevel: 0,
+  enemyIdx: 0,
+  enemyHp: 1,
+  lives: 2,
+  problem: null,
+  awaitingContinue: false,
+  gameStarted: false,
+  locked: false
+};
+
+const $ = id => document.getElementById(id);
+const levelDisplay = $('levelDisplay');
+const livesDisplay = $('livesDisplay');
+const progressDisplay = $('progressDisplay');
+const enemyHpDisplay = $('enemyHpDisplay');
+const monsterEl = $('monster');
+const monsterNameEl = $('monsterName');
+const problemExprEl = $('problemExpr');
+const answerAreaEl = $('answerArea');
+const messageEl = $('message');
+const msgArrow = $('msgArrow');
+const flashEl = $('flash');
+const fieldEl = $('field');
+
+function renderStatus() {
+  const lvl = LEVELS[state.levelIdx];
+  levelDisplay.textContent = lvl.lv;
+  livesDisplay.innerHTML = '♥'.repeat(state.lives) + '<span class="empty">' + '♡'.repeat(2 - state.lives) + '</span>';
+  if (lvl.lv === 'BOSS') progressDisplay.textContent = '最終戦';
+  else progressDisplay.textContent = `${state.defeatedInLevel}/${lvl.required}`;
+  enemyHpDisplay.textContent = `HP ${state.enemyHp}`;
+}
+function renderEnemy() {
+  const lvl = LEVELS[state.levelIdx];
+  const enemy = lvl.enemies[state.enemyIdx];
+  monsterEl.textContent = enemy.sprite;
+  monsterEl.className = enemy.isBoss ? 'boss' : '';
+  monsterNameEl.textContent = enemy.name;
+}
+function setMessage(text, showArrow = false) {
+  messageEl.firstChild.textContent = text;
+  msgArrow.style.display = showArrow ? 'inline' : 'none';
+}
+function renderProblem() {
+  problemExprEl.innerHTML = state.problem.expr;
+  $('problemBox').querySelector('.label').innerHTML = '▼ ' + state.problem.prompt;
+  problemExprEl.scrollTop = 0;
+  renderAnswerArea();
+}
+function renderAnswerArea() {
+  answerAreaEl.innerHTML = '';
+  if (state.problem.type === 'choice') {
+    const pad = document.createElement('div');
+    pad.className = 'choice-pad';
+    state.problem.choices.forEach((c, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'choice-btn';
+      btn.innerHTML = c;
+      btn.dataset.answerIdx = idx;
+      btn.addEventListener('click', () => handleChoice(idx, btn));
+      pad.appendChild(btn);
+    });
+    answerAreaEl.appendChild(pad);
+  }
+}
+
+function handleChoice(idx, btn) {
+  if (state.locked || state.awaitingContinue || !state.gameStarted) return;
+  state.locked = true;
+  const correct = (idx === state.problem.correctIdx);
+  if (correct) {
+    btn.classList.add('correct');
+  } else {
+    btn.classList.add('wrong');
+    setTimeout(() => {
+      const correctBtn = answerAreaEl.querySelector(`[data-answer-idx="${state.problem.correctIdx}"]`);
+      if (correctBtn) correctBtn.classList.add('correct');
+    }, 300);
+  }
+  setTimeout(() => {
+    if (correct) onCorrect();
+    else onWrong();
+  }, correct ? 400 : 900);
+}
+
+// ===== エフェクト =====
+function showDamage(text, color = '#ff4444') {
+  const d = document.createElement('div');
+  d.className = 'dmg-float';
+  d.textContent = text;
+  d.style.color = color;
+  d.style.textShadow = `2px 2px 0 #000, 0 0 8px ${color}`;
+  const rect = monsterEl.getBoundingClientRect();
+  const fieldRect = fieldEl.getBoundingClientRect();
+  d.style.left = `${rect.left - fieldRect.left + rect.width/2 - 20}px`;
+  d.style.top = `${rect.top - fieldRect.top + 10}px`;
+  fieldEl.appendChild(d);
+  setTimeout(() => d.remove(), 1000);
+}
+function flashScreen(cls = 'on') {
+  flashEl.classList.remove('on', 'defeat');
+  void flashEl.offsetWidth;
+  flashEl.classList.add(cls);
+}
+
+// 撃破エフェクト全部盛り
+function showDefeatEffects(isBoss = false) {
+  // 1. ゴールドフラッシュ
+  const gold = document.createElement('div');
+  gold.className = 'gold-flash';
+  fieldEl.appendChild(gold);
+  setTimeout(() => gold.remove(), 700);
+
+  // 2. 画面フラッシュ
+  flashScreen('defeat');
+
+  // 3. 衝撃波
+  const rect = monsterEl.getBoundingClientRect();
+  const fieldRect = fieldEl.getBoundingClientRect();
+  const cx = rect.left - fieldRect.left + rect.width / 2;
+  const cy = rect.top - fieldRect.top + rect.height / 2;
+
+  const shockwave = document.createElement('div');
+  shockwave.className = 'shockwave';
+  shockwave.style.left = `${cx}px`;
+  shockwave.style.top = `${cy}px`;
+  shockwave.style.transform = 'translate(-50%, -50%)';
+  fieldEl.appendChild(shockwave);
+  setTimeout(() => shockwave.remove(), 800);
+
+  // 4. クリティカル文字
+  const critLabels = isBoss
+    ? ['VICTORY!', 'ま王を　たおした！']
+    : pick([
+        ['CRITICAL!', '+∞'],
+        ['HIT!', '✨撃破✨'],
+        ['PERFECT!', '⚡雷撃⚡'],
+        ['GREAT!', '🌟きらめき🌟'],
+        ['NICE!', '💥撃破💥']
+      ]);
+  const critText = document.createElement('div');
+  critText.className = 'critical-text';
+  critText.textContent = critLabels[0];
+  critText.style.left = `${cx}px`;
+  critText.style.top = `${cy}px`;
+  fieldEl.appendChild(critText);
+  setTimeout(() => critText.remove(), 1200);
+
+  // 5. 粒子散らし（星と色粒子）
+  const colors = ['#ffff00', '#ffaa00', '#ff6600', '#ffffff', '#00ffff', '#ff88ff'];
+  const emojis = ['✨', '⭐', '💫', '🌟'];
+  const particleCount = isBoss ? 30 : 18;
+  for (let i = 0; i < particleCount; i++) {
+    const p = document.createElement('div');
+    const isStar = Math.random() < 0.4;
+    p.className = 'particle' + (isStar ? ' star' : '');
+    if (isStar) {
+      p.textContent = pick(emojis);
+    } else {
+      p.style.background = pick(colors);
+      p.style.boxShadow = `0 0 6px ${p.style.background}`;
+    }
+    p.style.left = `${cx}px`;
+    p.style.top = `${cy}px`;
+
+    const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.5;
+    const speed = 60 + Math.random() * 80;
+    const tx = Math.cos(angle) * speed;
+    const ty = Math.sin(angle) * speed - 20; // 少し上向き
+    const duration = 700 + Math.random() * 400;
+
+    p.animate([
+      { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+      { transform: `translate(calc(-50% + ${tx * 1.3}px), calc(-50% + ${ty * 1.3}px)) scale(0.3)`, opacity: 0 }
+    ], {
+      duration,
+      easing: 'cubic-bezier(0.2, 0.7, 0.4, 1)',
+      fill: 'forwards'
+    });
+    fieldEl.appendChild(p);
+    setTimeout(() => p.remove(), duration + 50);
+  }
+}
+
+function showLevelUp(name) {
+  const el = document.createElement('div');
+  el.className = 'level-up';
+  el.innerHTML = `NEXT FLOOR<span class="floor-name">${name}</span>`;
+  fieldEl.appendChild(el);
+  setTimeout(() => el.remove(), 1800);
+}
+
+// ========== ゲームフロー ==========
+function startGame() {
+  state.levelIdx = 0;
+  state.defeatedInLevel = 0;
+  state.enemyIdx = 0;
+  state.lives = 2;
+  state.awaitingContinue = false;
+  state.gameStarted = true;
+  state.locked = false;
+  lastKey = null;
+  const lvl = LEVELS[state.levelIdx];
+  state.enemyHp = lvl.enemies[0].hp;
+  renderEnemy();
+  renderStatus();
+  nextProblem();
+  setMessage(`${lvl.enemies[0].name}が　あらわれた！`);
+}
+function nextProblem() {
+  state.problem = generateProblem(state.levelIdx);
+  state.locked = false;
+  renderProblem();
+}
+
+let continueCallback = null;
+function awaitTap(callback) {
+  state.awaitingContinue = true;
+  continueCallback = callback;
+  msgArrow.style.display = 'inline';
+}
+function handleContinueTap() {
+  if (!state.awaitingContinue || !continueCallback) return;
+  msgArrow.style.display = 'none';
+  state.awaitingContinue = false;
+  const cb = continueCallback;
+  continueCallback = null;
+  cb();
+}
+messageEl.addEventListener('click', handleContinueTap);
+fieldEl.addEventListener('click', handleContinueTap);
+
+function onCorrect() {
+  state.enemyHp -= 1;
+  flashScreen('on');
+  monsterEl.classList.remove('hit');
+  void monsterEl.offsetWidth;
+  monsterEl.classList.add('hit');
+  showDamage('HIT!', '#ffff00');
+
+  const lvl = LEVELS[state.levelIdx];
+  const enemy = lvl.enemies[state.enemyIdx];
+
+  if (state.enemyHp <= 0) {
+    // 撃破エフェクト起動！
+    setTimeout(() => {
+      showDefeatEffects(enemy.isBoss);
+      monsterEl.classList.add('dying');
+      setMessage(`${enemy.name}を　たおした！`);
+      renderStatus();
+      setTimeout(() => onEnemyDefeated(), 1400);
+    }, 300);
+  } else {
+    setMessage(`こうげき！　${enemy.name}に\nダメージ！　あと HP${state.enemyHp}！`);
+    renderStatus();
+    setTimeout(() => {
+      state.lives = 2;
+      nextProblem();
+      setMessage(`つぎの　もんだい！`);
+      renderStatus();
+    }, 1400);
+  }
+}
+
+function onWrong() {
+  state.lives -= 1;
+  monsterEl.classList.remove('miss-dmg');
+  void monsterEl.offsetWidth;
+  monsterEl.classList.add('miss-dmg');
+  showDamage('MISS', '#ff4444');
+  renderStatus();
+
+  if (state.lives <= 0) {
+    setMessage(`ミス！　ちからつきた…`);
+    awaitTap(() => showGameOver());
+  } else {
+    setMessage(`ミス！　こうげきが　はずれた…\n（のこりライフ　${state.lives}）`);
+    awaitTap(() => {
+      nextProblem();
+      setMessage('もういちど　チャレンジ！');
+    });
+  }
+}
+
+function onEnemyDefeated() {
+  const lvl = LEVELS[state.levelIdx];
+  const enemy = lvl.enemies[state.enemyIdx];
+
+  if (enemy.isBoss) {
+    setTimeout(() => showEnding(), 600);
+    return;
+  }
+
+  state.defeatedInLevel += 1;
+  state.lives = 2;
+  renderStatus();
+
+  if (state.defeatedInLevel >= lvl.required) {
+    const nextLvl = LEVELS[state.levelIdx + 1];
+    showLevelUp(nextLvl.name);
+    setTimeout(() => {
+      state.levelIdx += 1;
+      state.defeatedInLevel = 0;
+      state.enemyIdx = 0;
+      state.enemyHp = nextLvl.enemies[0].hp;
+      monsterEl.classList.remove('dying');
+      renderEnemy();
+      renderStatus();
+      nextProblem();
+      if (nextLvl.lv === 'BOSS') {
+        setMessage(`ま王が　あらわれた！\nちからの　かぎりを　つくせ！`);
+      } else {
+        setMessage(`${nextLvl.name}に　とうちゃく！\n${nextLvl.enemies[0].name}が　あらわれた！`);
+      }
+    }, 1800);
+  } else {
+    setTimeout(() => {
+      state.enemyIdx += 1;
+      const nextEnemy = lvl.enemies[state.enemyIdx];
+      state.enemyHp = nextEnemy.hp;
+      monsterEl.classList.remove('dying');
+      renderEnemy();
+      renderStatus();
+      nextProblem();
+      setMessage(`${nextEnemy.name}が　あらわれた！`);
+    }, 1100);
+  }
+}
+
+function showEnding() { $('endingScreen').classList.remove('hidden'); }
+function showGameOver() {
+  $('gameOverScreen').classList.remove('hidden');
+  state.gameStarted = false;
+}
+
+$('startBtn').addEventListener('click', () => {
+  $('titleScreen').classList.add('hidden');
+  startGame();
+});
+$('restartBtn').addEventListener('click', () => {
+  $('endingScreen').classList.add('hidden');
+  startGame();
+});
+$('retryBtn').addEventListener('click', () => {
+  $('gameOverScreen').classList.add('hidden');
+  startGame();
+});
+
+renderStatus();
+renderEnemy();
+</script>
+</body>
+</html>

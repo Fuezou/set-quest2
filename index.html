@@ -33,7 +33,7 @@
     overflow: hidden;
   }
 
-  .dq-window {
+  .rpg-window {
     background: #000;
     border: 3px solid #fff;
     box-shadow: 0 0 0 3px #000, 0 0 0 5px #fff;
@@ -521,7 +521,7 @@
     <button class="start-btn" id="retryBtn">▶ やりなおす</button>
   </div>
 
-  <div class="dq-window" id="status">
+  <div class="rpg-window" id="status">
     <div class="row"><span class="label">ゆうしゃ</span><span class="value" id="levelDisplay">1F</span></div>
     <div class="row"><span class="label">ライフ</span><span class="value hearts" id="livesDisplay">♥♥</span></div>
     <div class="row"><span class="label">げきは</span><span class="value" id="progressDisplay">0/3</span></div>
@@ -534,14 +534,14 @@
     <div id="flash"></div>
   </div>
 
-  <div class="dq-window" id="problemBox">
+  <div class="rpg-window" id="problemBox">
     <div class="label">▼ もんだい</div>
     <div class="expr" id="problemExpr"></div>
   </div>
 
-  <div class="dq-window" id="answerArea"></div>
+  <div class="rpg-window" id="answerArea"></div>
 
-  <div class="dq-window" id="message" style="position:relative;">
+  <div class="rpg-window" id="message" style="position:relative;">
     モンスターが　あらわれた！
     <span class="arrow" id="msgArrow" style="display:none;">▼</span>
   </div>
@@ -935,19 +935,19 @@ function generateProblem(lvlIdx) {
 const LEVELS = [
   { lv: '1F', name: '演算のどうくつ', required: 3, enemies: [
     { name: 'スライム',    sprite: '🟢', hp: 1 },
-    { name: 'ドラキー',    sprite: '🦇', hp: 1 },
-    { name: 'おばけキノコ', sprite: '🍄', hp: 1 }
+    { name: 'ヴァンパイアバット',    sprite: '🩸', hp: 1 },
+    { name: 'どくキノコ', sprite: '🍄', hp: 1 }
   ]},
   { lv: '2F', name: '補集合のせいしつ', required: 3, enemies: [
     { name: 'おおさそり',   sprite: '🦂', hp: 1 },
-    { name: 'リカント',     sprite: '🐺', hp: 1 },
+    { name: 'ウェアウルフ',     sprite: '🐺', hp: 1 },
     { name: 'キメラ',       sprite: '🦅', hp: 1 }
   ]},
   { lv: '3F', name: 'ドモルガンのとう', required: 4, enemies: [
-    { name: 'ベビーサタン', sprite: '👹', hp: 1 },
+    { name: 'インプ', sprite: '👹', hp: 1 },
     { name: 'ゴーレム',     sprite: '🗿', hp: 1 },
     { name: 'ミミック',     sprite: '📦', hp: 1 },
-    { name: 'ダースドラゴン', sprite: '🐉', hp: 1 }
+    { name: 'エンシェントドラゴン', sprite: '🐉', hp: 1 }
   ]},
   { lv: 'BOSS', name: 'ま王のやかた', required: 1, enemies: [
     { name: '魔王ドラゴン', sprite: '🐲', hp: 2, isBoss: true }
